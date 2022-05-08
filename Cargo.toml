@@ -1,0 +1,9 @@
+[package]
+name = "influx-faker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fake = { version = "2.4", features=['derive'] }
+rand = "0.8"
+time = "0.3"
