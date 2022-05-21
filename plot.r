@@ -2,7 +2,7 @@ library('RPostgreSQL')
 library(ggplot2)
 
 pg = dbDriver("PostgreSQL")
-con = dbConnect(pg, dbname="mats", host="localhost", port=5432)
+con = dbConnect(pg, dbname="influx", host="localhost", port=5432)
 table = dbGetQuery(con, "SELECT * FROM measurements")
 ggplot(table, aes(x=as.factor(version), y=count)) + 
     geom_boxplot(fill="slateblue", alpha=0.2) + 

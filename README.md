@@ -30,7 +30,7 @@ psql -f setup.sql
 ```
 
 After that, prepare for execution of one version by running the script
-`prepare.sh`. This is done once after installing the `influx` package
+`reset.sh`. This is done once after installing the `influx` package
 you want to check. This will:
 
 1. Remove the old extension
@@ -69,3 +69,4 @@ con = dbConnect(pg, dbname="mats", host="localhost", port=5432)
 table = dbGetQuery(con, "SELECT * FROM measurements")
 ggplot(table, aes(x=version, y=count, fill=version)) + geom_violin()
 ```
+

@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS magic.swap (LIKE magic.cpu);
 CREATE TABLE IF NOT EXISTS magic.disk (LIKE magic.cpu);
 CREATE TABLE IF NOT EXISTS magic.diskio (LIKE magic.cpu);
 
-CREATE VIEW IF NOT EXISTS combined AS
+DROP VIEW IF EXISTS combined;
+CREATE VIEW combined AS
     SELECT _time, _tags, _fields FROM magic.cpu
   UNION ALL
     SELECT _time, _tags, _fields FROM magic.swap
@@ -21,6 +22,7 @@ CREATE VIEW IF NOT EXISTS combined AS
 
 CREATE TABLE IF NOT EXISTS measurements (
    time timestamptz,
+   version text,
    count int,
    total int 
 );
