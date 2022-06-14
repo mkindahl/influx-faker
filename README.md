@@ -29,25 +29,33 @@ PGDATA=/var/lib/pgsql/13/data
 psql -f setup.sql
 ```
 
-After that, prepare for execution of one version by running the script
-`reset.sh`. This is done once after installing the `influx` package
-you want to check. This will:
+If you are using a remote connection, you can set the traditional
+`psql` variables `PGHOST`, `PGPORT` (if it is not the default 5432),
+and `PGPASSWORD` (if you use password authentication).
 
-1. Remove the old extension
-2. Terminate all Influx backends
-3. Reinstall the Influx package (with the default version)
-4. Start a worker listening on port 4711 and writing to schema `magic`
+```bash
+PATH=/usr/local/postgresql/13.5/bin:$PATH
+PGHOST=capulet.lan
+PGPASSWORD=xyzzy
+psql -f setup.sql
+```
 
 You can now run the collection of data using `collect.sh`, which is
 taking 100 samples of of the run in the following manner:
-1. Fetch the version of the extension
-2. Truncate the tables in schema `magic`
-3. Run the generator to write to port 4711 on localhost using UDP
-4. Wait for the count to be stable, indicating that the worker is done
+1. Reset the old extension by:
+   1. Remove the old extension
+   2. Terminate all Influx backends
+   3. Reinstall the Influx package (with the default version)
+   4. Start a worker listening on port 4711 and writing to schema `magic`
+2. Fetch the version of the extension
+3. Truncate the tables in schema `magic`
+4. Run the generator to write to port provided to `-p` argument and
+   host given by `$PGHOST` using UDP.
+5. Wait for the count to be stable, indicating that the worker is done
    processing the lines.
-5. Insert version, timestamp, a total count of rows, and the number of
+6. Insert version, timestamp, a total count of rows, and the number of
    rows sent into the table `public.measurements`.
-6. Repeat steps 2-5 until there are 100 measurements.
+7. Repeat steps 3-6 until there are 100 measurements.
 
 If you stop the script, it will leave existing measurements in the
 table and just fill up until the count is 100.

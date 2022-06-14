@@ -5,6 +5,9 @@
 # UDP packets will be dropped if they are not processed fast enough.
 
 function usage() {
+    if [[ $# -gt 0 ]]; then
+	echo "error: $*" 1>&2
+    fi
     cat <<EOF 1>&2
 Usage: bash collect.sh [ -s <scheme> ]
 Collect measurements for scheme.
@@ -16,17 +19,57 @@ are not processed fast enough.
 
 The measurements will be stored under version of the extension plus
 scheme name.
+
+Options
+
+    -s <scheme>    Use the provided scheme
+    -p <port>      Connect to the port
+
 EOF
     exit 2
 }
 
-VERSION=$(echo $(psql -t -c "select extversion from pg_extension where extname = 'influx'"))
+function reset_extension () {
+    # First, drop the extension and stop all workers
+    psql -q <<EOF
+DROP EXTENSION IF EXISTS influx;
+
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE backend_type LIKE 'Influx%';
+EOF
+
+    # Reinstall the extension and start a worker. Pick a specific
+    # version if one is set.
+    if [[ -z "$VERSION" ]]; then
+	psql -q -c "CREATE EXTENSION influx"
+    else
+	psql -q -c "CREATE EXTENSION influx VERSION '$VERSION'"
+    fi
+    psql -q -c "SELECT * FROM worker_launch('magic', '$PORT');"
+}
+
+function show_measurements () {
+    psql -q <<EOF
+SELECT version, scheme, total, count(*), avg(count::decimal), stddev(count)
+  FROM measurements GROUP BY version, scheme, total
+EOF
+}
+
 SCHEME=basic
 
-while getopts "t:" opt; do
+set -e
+
+while getopts "p:s:v:" opt; do
     case $opt in
+	p)
+	    PORT=$OPTARG
+	    ;;
 	s)
 	    SCHEME=$OPTARG
+	    ;;
+	v)
+	    VERSION=$OPTARG
 	    ;;
 	*)
 	    usage
@@ -34,12 +77,18 @@ while getopts "t:" opt; do
     esac
 done
 
+reset_extension
+
+VERSION=$(echo $(psql -t -c "select extversion from pg_extension where extname = 'influx'"))
+
 if [[ -z "$SCHEME" ]]; then
-    echo "You need to provide a scheme to use" 1>&2
-    exit 2
+    usage "You need to provide a scheme to use"
 elif ! [[ -r "scheme/$SCHEME.sh" ]]; then
-    echo "You need to have a file $SCHEME.sh containing the scheme" 1>&2
-    exit 2
+    usage "You need to have a file scheme/$SCHEME.sh containing the scheme"
+fi
+
+if [[ -z "$PORT" ]]; then
+    usage "You need to provide a port to use"
 fi
 
 # Each scheme is in a file with functions to handle each primitive
@@ -70,22 +119,16 @@ fi
 #    Number of rows sent to the port.
 
 echo "Measure ${COUNT:=1000000} lines for version '$VERSION' scheme $SCHEME"
+echo "Connecting to $PGHOST and using $PORT as listen port"
 
 source scheme/$SCHEME.sh
 
 set -e
 
-function show_measurements () {
-    psql -q <<EOF
-SELECT version, scheme, total, count(*), avg(count::decimal), stddev(count)
-  FROM measurements GROUP BY version, scheme, total
-EOF
-}
-
 setup_scheme
 while true; do
     reset_scheme
-    cargo run -q 127.0.0.1:4711 $COUNT
+    cargo run -q $PGHOST:$PORT $COUNT
 
     # Since the lines are processed in the background, we can still be
     # processing lines even though we have stopped sending then.
