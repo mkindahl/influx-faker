@@ -13,11 +13,22 @@ This package contains a faker that sends fake data to a UDP port and
 also tools to measure the performance by seeing how many packets are
 actually processed.
 
+## Setting up a user
+
+To run the tests, you need to have a user available that can log
+in. If you can type `psql` and as a result log in, you should be able
+to run this script.
+
+If not, you have to set `PGHOST`, `PGPORT`, `PGDATA`, `PGPASSWORD`, or
+others to appropriate values.
+
 ## Running the tests
 
-1. Setup the database
+1. Set up the database
 2. Prepare for execution
 3. Generate measurements
+
+### Set up the database
 
 To setup the database run the script `setup.sql` on the server. Make
 sure to set `PGDATA` to the right path for the server (or use option
@@ -26,7 +37,7 @@ sure to set `PGDATA` to the right path for the server (or use option
 ```bash
 PATH=/usr/local/postgresql/13.5/bin:$PATH
 PGDATA=/var/lib/pgsql/13/data
-psql -f setup.sql
+psql -qf setup.sql
 ```
 
 If you are using a remote connection, you can set the traditional
@@ -37,16 +48,22 @@ and `PGPASSWORD` (if you use password authentication).
 PATH=/usr/local/postgresql/13.5/bin:$PATH
 PGHOST=capulet.lan
 PGPASSWORD=xyzzy
-psql -f setup.sql
+psql -qf setup.sql
 ```
 
+### Prepare for execution
+
+
+
+### Generate measurements
+
 You can now run the collection of data using `collect.sh`, which is
-taking 100 samples of of the run in the following manner:
+taking 100 samples of the run in the following manner:
 1. Reset the old extension by:
    1. Remove the old extension
    2. Terminate all Influx backends
    3. Reinstall the Influx package (with the default version)
-   4. Start a worker listening on port 4711 and writing to schema `magic`
+   4. Start workers listening on port 4711 and writing to schema `magic`
 2. Fetch the version of the extension
 3. Truncate the tables in schema `magic`
 4. Run the generator to write to port provided to `-p` argument and
