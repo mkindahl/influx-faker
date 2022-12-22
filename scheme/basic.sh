@@ -1,3 +1,5 @@
+#!/bin/bash
+
 function setup_scheme () {
     psql -q <<EOF
 CREATE SCHEMA IF NOT EXISTS magic;
@@ -55,15 +57,15 @@ function wait_until_stable () {
     echo -n "Waiting.."
     prev=-1
     while true; do
-	cnt=$(psql -t -c "SELECT count(*) FROM combined")
-	if [[ $cnt -eq $prev ]]; then
+	cnt=$(psql -qt -c "SELECT count(*) FROM combined")
+	if [[ "$cnt" -eq "$prev" ]]; then
 	    break
 	fi
 	prev=$cnt
 	echo -n "."
 	sleep 1
     done
-    echo "stable (at $(echo $cnt))"
+    echo "stable (at $cnt)"
 }
 
 function record_measurements () {

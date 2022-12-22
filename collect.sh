@@ -18,12 +18,16 @@ actually made it, since this is UDP packets will be dropped if they
 are not processed fast enough.
 
 The measurements will be stored under version of the extension plus
-scheme name.
+scheme name. If no version is provided, no version argument will be
+provided when installing the extension, so the default version will be
+installed.
 
 Options
 
     -s <scheme>    Use the provided scheme
     -p <port>      Connect to the port
+    -v <version>   Version of extension to use
+    -w <workers>   Number of workers to spawn
 
 EOF
     exit 2
@@ -46,7 +50,9 @@ EOF
     else
 	psql -q -c "CREATE EXTENSION influx VERSION '$VERSION'"
     fi
-    psql -q -c "SELECT * FROM worker_launch('magic', '$PORT');"
+    for _ in $(seq 1 "$WORKERS"); do
+	psql -q -c "SELECT * FROM worker_launch('magic', '$PORT');"
+    done
 }
 
 function show_measurements () {
@@ -56,12 +62,21 @@ SELECT version, scheme, total, count(*), avg(count::decimal), stddev(count)
 EOF
 }
 
+# Default values for variables. Note that the PGXXX variables are for
+# psql, but these variables are for other purposes.
+HOST=${PGHOST:-localhost}
+PORT=8089
+WORKERS=1
 SCHEME=basic
+REPEATS=${REPEATS:-100}
 
 set -e
 
-while getopts "p:s:v:" opt; do
+while getopts "h:p:s:v:w:" opt; do
     case $opt in
+	h)
+	    HOST=$OPTARG
+	    ;;
 	p)
 	    PORT=$OPTARG
 	    ;;
@@ -71,15 +86,14 @@ while getopts "p:s:v:" opt; do
 	v)
 	    VERSION=$OPTARG
 	    ;;
+	w)
+	    WORKERS=$OPTARG
+	    ;;
 	*)
 	    usage
 	    ;;
     esac
 done
-
-reset_extension
-
-VERSION=$(echo $(psql -t -c "select extversion from pg_extension where extname = 'influx'"))
 
 if [[ -z "$SCHEME" ]]; then
     usage "You need to provide a scheme to use"
@@ -118,17 +132,29 @@ fi
 # COUNT:
 #    Number of rows sent to the port.
 
-echo "Measure ${COUNT:=1000000} lines for version '$VERSION' scheme $SCHEME"
-echo "Connecting to $PGHOST and using $PORT as listen port"
+echo "Connecting to $HOST and using $PORT as listen port"
 
-source scheme/$SCHEME.sh
+# shellcheck source=scheme/basic.sh
+source "scheme/$SCHEME.sh"
 
 set -e
 
+function influx_version() {
+    # Use echo here to get rid of surrounding whitespace
+    echo $(psql -qt -c "select extversion from pg_extension where extname = 'influx'")
+}
+
+# Need to set up the scheme first, since that decides what schema to use.
 setup_scheme
+reset_extension
+
+VERSION=$(influx_version)
+
+echo "Measure ${COUNT:=1000000} lines for version '$VERSION' scheme $SCHEME"
+
 while true; do
     reset_scheme
-    cargo run -q $PGHOST:$PORT $COUNT
+    cargo run -q "$HOST:$PORT" "$COUNT"
 
     # Since the lines are processed in the background, we can still be
     # processing lines even though we have stopped sending then.
@@ -136,9 +162,9 @@ while true; do
     wait_until_stable
     record_measurements
     show_measurements
-    # If we have a 100 measurements, we can stop.
-    count=$(psql -t -c "SELECT count(*) FROM measurements WHERE version = '$VERSION' AND scheme = '$SCHEME'")
-    if [ $count -ge 100 ]; then
+    # If we have a $REPEATS measurements, we can stop.
+    count=$(psql -qt -c "SELECT count(*) FROM measurements WHERE version = '$VERSION' AND scheme = '$SCHEME'")
+    if [ "$count" -ge "$REPEATS" ]; then
 	break
     fi
 done
