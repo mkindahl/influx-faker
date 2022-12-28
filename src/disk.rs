@@ -19,7 +19,7 @@ pub struct Disk {
     total: u32,
     used: u32,
     used_percent: f32,
-    timestamp: u64,
+    pub timestamp: u128,
 }
 
 impl fmt::Display for Disk {
@@ -52,7 +52,7 @@ impl Dummy<Faker> for Disk {
             used,
             free: total - used,
             used_percent: 100.0 * (used as f32 / total as f32),
-            timestamp: Faker.fake::<u64>(),
+            timestamp: Faker.fake::<u128>(),
         }
     }
 }

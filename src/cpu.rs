@@ -13,7 +13,7 @@ pub struct Cpu {
     usage_nice: f32,
     usage_system: f32,
     usage_user: f32,
-    timestamp: u64,
+    pub timestamp: u128,
 }
 
 impl Dummy<Faker> for Cpu {
