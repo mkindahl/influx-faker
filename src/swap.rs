@@ -10,7 +10,7 @@ pub struct Swap {
     total: u32,
     used: u32,
     used_percent: f32,
-    timestamp: u64,
+    pub timestamp: u128,
 }
 
 impl fmt::Display for Swap {

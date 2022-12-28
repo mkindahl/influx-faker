@@ -10,7 +10,7 @@ pub struct DiskIO {
     io_time: f32,
     read_bytes: u32,
     write_bytes: u32,
-    timestamp: u64,
+    pub timestamp: u128,
 }
 
 impl fmt::Display for DiskIO {
