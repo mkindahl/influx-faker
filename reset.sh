@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Prepare for measuring a new version.
 #
 # This should be executed after you have installed a new version of

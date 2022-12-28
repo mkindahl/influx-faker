@@ -139,8 +139,10 @@ source "scheme/$SCHEME.sh"
 
 set -e
 
+# Get influx extension version.
+# Use echo here to get rid of surrounding whitespace
 function influx_version() {
-    # Use echo here to get rid of surrounding whitespace
+    # shellcheck disable=SC2046,SC2005
     echo $(psql -qt -c "select extversion from pg_extension where extname = 'influx'")
 }
 
